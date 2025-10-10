@@ -242,7 +242,6 @@ inline Vector3 Cross(const Vector3& a, const Vector3& b)
     };
 }
 
-
 enum BlendMode {
     // ブレンドなし
     kBlendModeNone,
@@ -921,6 +920,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
     // modelDataを読み込む
     ModelData modelData = LoadObjFile("Resources/fence", "fence.obj");
+    modelData.vertices.push_back({ .position = { 1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左上
+    modelData.vertices.push_back({ .position = { -1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右上
+    modelData.vertices.push_back({ .position = { 1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左下
+    modelData.vertices.push_back({ .position = { 1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左下
+    modelData.vertices.push_back({ .position = { -1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右上
+    modelData.vertices.push_back({ .position = { -1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右下
 
     // --- 頂点バッファ生成前に定義 ---
     const uint32_t kSubdivision = 32; // 分割数（大きいほど滑らか）
@@ -1485,6 +1490,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 
             transform.rotate.y += 0.00f;
+            
+            // たくさん描画数
+            int instanceCount = 10; 
 
             // カメラの位置をz=-10.0fに設定
             Transform cameraTransform {
@@ -1551,7 +1559,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             commandList->RSSetViewports(1, &viewport);
             commandList->RSSetScissorRects(1, &scissorRect);
             // commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-            commandList->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
+            commandList->DrawInstanced(UINT(modelData.vertices.size()), instanceCount, 0, 0);
 
             /*
             // スプライト描画
