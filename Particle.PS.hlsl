@@ -12,7 +12,7 @@ struct Material
     float4x4 uvTransform;
 };
 
-ConstantBuffer<Material> gMaterial : register(b0);
+StructuredBuffer<Material> gMaterial : register(b0);
 
 struct DirectionalLight
 {
@@ -21,7 +21,7 @@ struct DirectionalLight
     float intensity;
 };
 
-ConstantBuffer<DirectionalLight> gDirectionalLight : register(b1);
+StructuredBuffer<DirectionalLight> gDirectionalLight : register(b1);
 
 struct PixelShaderOutput
 {
@@ -34,33 +34,7 @@ PixelShaderOutput main(VertexShaderOutput input)
     float4 transformedUV = mul(float4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
 
-    float4 baseColor = gMaterial.color * textureColor;
-
-    if (gMaterial.enableLighting != 0)
-    {
-        float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
-
-        float lighting = 1.0f;
-        if (gMaterial.shadingType == 0)
-        { // Lambert
-            lighting = max(NdotL, 0.0f);
-        }
-        else
-        { // HalfLambert
-            lighting = NdotL * 0.5f + 0.5f;
-        }
-
-        // 前のコード
-        //output.color = baseColor * gDirectionalLight.color * lighting * gDirectionalLight.intensity;
-        
-        output.color = gMaterial.color * textureColor * gDirectionalLight.color * lighting * gDirectionalLight.intensity;
-        output.color.rgb = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * gDirectionalLight.intensity;
-        output.color.a = gMaterial.color.a * textureColor.a;
-    }
-    else
-    {
-        output.color = baseColor;
-    }
+    output.color = gMaterial.color * textureColor;
     
     // output.colorのα値が0のときピクセルを棄却
     if (output.color.a == 0.0f)
