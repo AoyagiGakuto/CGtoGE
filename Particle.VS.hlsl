@@ -1,4 +1,4 @@
-#include "Object3d.hlsli"
+#include "Particle.hlsli"
 
 struct TransformationMatrix
 {
@@ -19,8 +19,8 @@ struct VertexShaderInput
 VertexShaderOutput main(VertexShaderInput input)
 {
     VertexShaderOutput output;
-    output.position = mul(input.position,gTransformationMatrix.WVP);
+    output.position = mul(input.position, gTransformationMatrix.WVP);
     output.texcoord = input.texcoord;
-    output.normal = normalize(mul(input.normal, (float3x3)gTransformationMatrix.World));
+    output.normal = normalize(mul(input.normal, (float3x3) gTransformationMatrix.World));
     return output;
 }
