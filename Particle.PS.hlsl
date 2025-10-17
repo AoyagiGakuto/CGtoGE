@@ -12,7 +12,7 @@ struct Material
     float4x4 uvTransform;
 };
 
-StructuredBuffer<Material> gMaterial : register(b0);
+StructuredBuffer<Material> gMaterial : register(t0);
 
 struct DirectionalLight
 {
@@ -21,7 +21,7 @@ struct DirectionalLight
     float intensity;
 };
 
-StructuredBuffer<DirectionalLight> gDirectionalLight : register(b1);
+StructuredBuffer<DirectionalLight> gDirectionalLight : register(t1);
 
 struct PixelShaderOutput
 {
