@@ -114,7 +114,12 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Particle.PS.hlsl" />
+    <FxCompile Include="Particle.PS.hlsl">
+      <CompileD2DCustomEffect Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </CompileD2DCustomEffect>
+      <CompileD2DCustomEffect Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </CompileD2DCustomEffect>
+    </FxCompile>
     <FxCompile Include="Particle.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>

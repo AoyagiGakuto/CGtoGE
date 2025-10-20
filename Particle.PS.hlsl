@@ -12,16 +12,18 @@ struct Material
     float4x4 uvTransform;
 };
 
-StructuredBuffer<Material> gMaterial : register(t0);
+StructuredBuffer<Material> gMaterial : register(t1);
 
+/*
 struct DirectionalLight
 {
     float4 color;
     float3 direction;
     float intensity;
-};
+};j
+*/
 
-StructuredBuffer<DirectionalLight> gDirectionalLight : register(t1);
+//StructuredBuffer<DirectionalLight> gDirectionalLight : register(t2);
 
 struct PixelShaderOutput
 {
@@ -38,18 +40,6 @@ PixelShaderOutput main(VertexShaderOutput input)
     
     // output.colorのα値が0のときピクセルを棄却
     if (output.color.a == 0.0f)
-    {
-        discard;
-    }
-    
-    // textureColorのα値が0のときピクセルを棄却
-    if (textureColor.a == 0.0f)
-    {
-        discard;
-    }
-    
-    // textureColorのα値が0.5以下のときピクセルを棄却
-    if (textureColor.a <= 0.5f)
     {
         discard;
     }
