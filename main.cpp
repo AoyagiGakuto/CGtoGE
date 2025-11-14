@@ -1625,7 +1625,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             commandList->RSSetViewports(1, &viewport);
             commandList->RSSetScissorRects(1, &scissorRect);
             // commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-            commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance 0, 0);
+            commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
 
             /*
             // スプライト描画
