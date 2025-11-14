@@ -765,7 +765,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     descriptorRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRanges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    D3D12_ROOT_PARAMETER rootParameters[4] = {};
+    D3D12_ROOT_PARAMETER rootParameters[5] = {};
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[0].Descriptor.ShaderRegister = 0;
@@ -786,10 +786,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     descriptorRangeForInstancing[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
     descriptorRangeForInstancing[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // DescriptorTableを使う
-    rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; // VertexShaderで使う
-    rootParameters[1].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancing; // Tableの中身の配列を設定
-    rootParameters[1].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancing); // Tableで利用する数
+    rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[4].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancing;
+    rootParameters[4].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancing);
 
     // レジスタ番号1を使う
     descriptionRootSignature.pParameters = rootParameters;
@@ -1196,17 +1196,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     };
 
     Transform transforms[kNumInstance];
-    for(uint32_t index = 0; index < kNumInstance; ++index) {
+    for (uint32_t index = 0; index < kNumInstance; ++index) {
         transforms[index].scale = { 1.0f, 1.0f, 1.0f };
         transforms[index].rotate = { 0.0f, 0.0f, 0.0f };
-        transforms[index].translate = { index * 0.1f, index * 0.1f, index * 0.1f };
-    }
-
-    for(uint32_t index = 0; index < kNumInstance; ++index) {
-        Matrix4x4 worldMatrix = MakeAffineMatrix(transforms[index].scale, transforms[index].rotate, transforms[index].translate);
-        Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, worldViewProjectionMatrix);
-        instancingData[index].WVP = worldViewProjectionMatrix;
-        instancingData[index].World = worldMatrix;
+        transforms[index].translate = { index * 0.1f, index * 0.1f, index * 0.0f };
     }
 
     std::vector<std::string> textureFiles = {
@@ -1275,7 +1268,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.8f, 0.5f, 0.3f, 1.0f); // 薄いオレンジ
     style.Colors[ImGuiCol_ButtonActive] = ImVec4(1.0f, 0.3f, 0.2f, 1.0f); // 赤
 
-    DirectX::ScratchImage mipImages = LoadTexture("Resources/fence.png");
+    DirectX::ScratchImage mipImages = LoadTexture("Resources/uvChecker.png");
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
     ComPtr<ID3D12Resource> textureResouce = CreateTextureResourse(device.Get(), metadata);
     UploadTextureData(textureResouce.Get(), mipImages);
@@ -1599,6 +1592,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                 float(kClientWidth), float(kClientHeight),
                 0.0f, 100.0f);
 
+            for (uint32_t index = 0; index < kNumInstance; ++index) {
+                Matrix4x4 worldMatrix = MakeAffineMatrix(transforms[index].scale, transforms[index].rotate, transforms[index].translate);
+                Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, worldViewProjectionMatrix);
+                instancingData[index].WVP = worldViewProjectionMatrix;
+                instancingData[index].World = worldMatrix;
+            }
+
             Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
             *transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
 
@@ -1621,20 +1621,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
             commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandlesGPU[sphereTextureIndex]);
             commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
-            commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
+            commandList->SetGraphicsRootDescriptorTable(4, instancingSrvHandleGPU);
             commandList->RSSetViewports(1, &viewport);
             commandList->RSSetScissorRects(1, &scissorRect);
             // commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-            commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
+            //commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
 
-            /*
             // スプライト描画
             commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-            commandList->SetGraphicsRootConstantBufferView(0, materialResource->GetGPUVirtualAddress());
+            commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
             commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
-            commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandlesGPU[0]);
-            commandList->DrawInstanced(6, 1, 0, 0);
-            */
+            commandList->SetGraphicsRootDescriptorTable(4, instancingSrvHandleGPU);
+            commandList->DrawInstanced(6, kNumInstance, 0, 0);
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 
