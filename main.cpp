@@ -893,7 +893,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
     // Shaderをコンパイルする
-    IDxcBlob* vertexShaderBlob = CompileShader(L"Object3d.VS.hlsl",
+    IDxcBlob* vertexShaderBlob = CompileShader(L"Particle.VS.hlsl",
         L"vs_6_0", dxcUtils, dxcCompiler, includeHandler);
     assert(vertexShaderBlob != nullptr);
 
@@ -1203,8 +1203,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     }
 
     std::vector<std::string> textureFiles = {
-        "Resources/fence.png",
         "Resources/uvChecker.png",
+        "Resources/fence.png",
         "Resources/monsterBall.png",
     };
     std::vector<ComPtr<ID3D12Resource>> textureResources;
@@ -1624,15 +1624,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             commandList->SetGraphicsRootDescriptorTable(4, instancingSrvHandleGPU);
             commandList->RSSetViewports(1, &viewport);
             commandList->RSSetScissorRects(1, &scissorRect);
-            // commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-            //commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
+            //commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
+            commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
 
             // スプライト描画
             commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
             commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
             commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
             commandList->SetGraphicsRootDescriptorTable(4, instancingSrvHandleGPU);
-            commandList->DrawInstanced(6, kNumInstance, 0, 0);
+            //commandList->DrawInstanced(6, kNumInstance, 0, 0);
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 
