@@ -893,6 +893,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
     // Shaderをコンパイルする
+    // こっちかも
     IDxcBlob* vertexShaderBlob = CompileShader(L"Object3d.VS.hlsl",
         L"vs_6_0", dxcUtils, dxcCompiler, includeHandler);
     assert(vertexShaderBlob != nullptr);
@@ -946,7 +947,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     materialData->uvTransform = MakeIdentity4x4();
 
     // modelDataを読み込む
-    ModelData modelData = LoadObjFile("Resources/fence", "fence.obj");
+    //ModelData modelData = LoadObjFile("Resources/fence", "fence.obj");
+    ModelData modelData;
     modelData.vertices.push_back({ .position = { 1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左上
     modelData.vertices.push_back({ .position = { -1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右上
     modelData.vertices.push_back({ .position = { 1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左下
@@ -1040,7 +1042,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     directionalLightData->direction = { 0.0f, -1.0f, 0.0f };
     directionalLightData->intensity = 1.0f;
 
-    const uint32_t kNumInstance = 10; // インスタンス集
+    const uint32_t kNumInstance = 10; // いたポリ枚数
     // Instancing用のTransformationMatrixリソースを作る
     Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource = CreateBufferResouse(device.Get(), sizeof(TransformationMatrix) * kNumInstance);
     // 書き込むためのアドレスを取得
@@ -1625,14 +1627,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             commandList->RSSetViewports(1, &viewport);
             commandList->RSSetScissorRects(1, &scissorRect);
             // commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-            //commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
+            commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
 
             // スプライト描画
             commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
             commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
             commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
             commandList->SetGraphicsRootDescriptorTable(4, instancingSrvHandleGPU);
-            commandList->DrawInstanced(6, kNumInstance, 0, 0);
+            //commandList->DrawInstanced(6, kNumInstance, 0, 0);
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 
