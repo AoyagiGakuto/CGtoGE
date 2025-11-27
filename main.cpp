@@ -1060,8 +1060,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     instancingSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     instancingSrvDesc.Buffer.NumElements = kNumInstance;
     instancingSrvDesc.Buffer.StructureByteStride = sizeof(TransformationMatrix);
-    D3D12_CPU_DESCRIPTOR_HANDLE instancingSrvHandleCPU = GetCPUDescriptorHandle(srvDescriptorHeap.Get(), descriptorSizeSRV, 3);
-    D3D12_GPU_DESCRIPTOR_HANDLE instancingSrvHandleGPU = GetGPUDescriptorHandle(srvDescriptorHeap.Get(), descriptorSizeSRV, 3);
+    D3D12_CPU_DESCRIPTOR_HANDLE instancingSrvHandleCPU = GetCPUDescriptorHandle(srvDescriptorHeap.Get(), descriptorSizeSRV, 10);
+    D3D12_GPU_DESCRIPTOR_HANDLE instancingSrvHandleGPU = GetGPUDescriptorHandle(srvDescriptorHeap.Get(), descriptorSizeSRV, 10);
     device->CreateShaderResourceView(instancingResource.Get(), &instancingSrvDesc, instancingSrvHandleCPU);
 
     // Sprite用のマテリアルリソースを作る
@@ -1134,20 +1134,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
     VertexData* vertexDataSprite = nullptr;
     vertexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSprite));
-    vertexDataSprite[0].position = { 0.0f, 360.0f, 0.0f, 1.0f };
+
+    vertexDataSprite[0].position = { -0.5f, -0.5f, 0.0f, 1.0f }; // 左下
     vertexDataSprite[0].texcoord = { 0.0f, 1.0f };
     vertexDataSprite[0].normal = { 0.0f, 0.0f, -1.0f };
-    vertexDataSprite[1].position = { 0.0f, 0.0f, 0.0f, 1.0f };
-    vertexDataSprite[1].texcoord = { 0.0f, 0.0f };
-    vertexDataSprite[2].position = { 640.0f, 360.0f, 0.0f, 1.0f };
-    vertexDataSprite[2].texcoord = { 1.0f, 1.0f };
 
-    vertexDataSprite[3].position = { 0.0f, 0.0f, 0.0f, 1.0f };
+    vertexDataSprite[1].position = { -0.5f, 0.5f, 0.0f, 1.0f }; // 左上
+    vertexDataSprite[1].texcoord = { 0.0f, 0.0f };
+    vertexDataSprite[1].normal = { 0.0f, 0.0f, -1.0f };
+
+    vertexDataSprite[2].position = { 0.5f, -0.5f, 0.0f, 1.0f }; // 右下
+    vertexDataSprite[2].texcoord = { 1.0f, 1.0f };
+    vertexDataSprite[2].normal = { 0.0f, 0.0f, -1.0f };
+
+    vertexDataSprite[3].position = { -0.5f, 0.5f, 0.0f, 1.0f }; // 左上
     vertexDataSprite[3].texcoord = { 0.0f, 0.0f };
-    vertexDataSprite[4].position = { 640.0f, 0.0f, 0.0f, 1.0f };
+    vertexDataSprite[3].normal = { 0.0f, 0.0f, -1.0f };
+
+    vertexDataSprite[4].position = { 0.5f, 0.5f, 0.0f, 1.0f }; // 右上
     vertexDataSprite[4].texcoord = { 1.0f, 0.0f };
-    vertexDataSprite[5].position = { 640.0f, 360.0f, 0.0f, 1.0f };
+    vertexDataSprite[4].normal = { 0.0f, 0.0f, -1.0f };
+
+    vertexDataSprite[5].position = { 0.5f, -0.5f, 0.0f, 1.0f }; // 右下
     vertexDataSprite[5].texcoord = { 1.0f, 1.0f };
+    vertexDataSprite[5].normal = { 0.0f, 0.0f, -1.0f };
 
     ComPtr<ID3D12Resource> transformationMatrixResourceSprite = CreateBufferResouse(device.Get(), sizeof(Matrix4x4));
     Matrix4x4* transformationMatrixDataSprite = nullptr;
@@ -1576,6 +1586,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             wvpData->WVP = worldViewProjectionMatrix;
             wvpData->World = worldMatrix;
 
+            Matrix4x4 viewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
+
             Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
             uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
             uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
@@ -1591,7 +1603,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
             for (uint32_t index = 0; index < kNumInstance; ++index) {
                 Matrix4x4 worldMatrix = MakeAffineMatrix(transforms[index].scale, transforms[index].rotate, transforms[index].translate);
-                Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, worldViewProjectionMatrix);
+                Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, viewProjectionMatrix);
                 instancingData[index].WVP = worldViewProjectionMatrix;
                 instancingData[index].World = worldMatrix;
             }
@@ -1610,25 +1622,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                 nullptr);
 
             // TransitionBarrierを張る
-            commandList->SetGraphicsRootSignature(rootSignature.Get());
-            commandList->SetPipelineState(graphicsPipelineState.Get());
-            commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-            commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
+            //commandList->SetGraphicsRootSignature(rootSignature.Get());
+            //commandList->SetPipelineState(graphicsPipelineState.Get());
+            //commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+            //commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+            //commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
             // commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
-            commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
-            commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandlesGPU[sphereTextureIndex]);
-            commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
-            commandList->RSSetViewports(1, &viewport);
-            commandList->RSSetScissorRects(1, &scissorRect);
+            //commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
+            //commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandlesGPU[sphereTextureIndex]);
+            //commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
+            //commandList->RSSetViewports(1, &viewport);
+            //commandList->RSSetScissorRects(1, &scissorRect);
             // commandList->DrawInstanced(kSphereVertexCount, 1, 0, 0);
-            commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
+            //commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
 
             // スプライト描画
+            commandList->SetGraphicsRootSignature(rootSignature.Get());\
+            commandList->SetPipelineState(graphicsPipelineState.Get());
+            commandList->RSSetViewports(1, &viewport);
+            commandList->RSSetScissorRects(1, &scissorRect);
+            commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
             commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
-            //commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+            // commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
             commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
+
+            // テクスチャの設定
+            commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandlesGPU[sphereTextureIndex]);
+
             commandList->DrawInstanced(6, kNumInstance, 0, 0);
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
