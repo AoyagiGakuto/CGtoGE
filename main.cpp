@@ -1428,97 +1428,79 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
             ImGui::Begin("Main Control");
 
-            /*
             // --- Sprite ---
             ImGui::Text("Sprite");
             ImGui::Separator();
-            ImGui::DragFloat3("Sprite Position", &transformSprite.translate.x);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the position of the sprite (X, Y, Z)");
+            
+            for (uint32_t index = 0; index < kNumInstance; ++index) {
+                std::string label = "Particle [" + std::to_string(index) + "] Position";
 
-            ImGui::DragFloat3("Sprite Rotation", &transformSprite.rotate.x);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the rotation of the sprite (angles for X, Y, Z axes)");
-
-            ImGui::DragFloat3("Sprite Scale", &transformSprite.scale.x);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the scale of the sprite (multipliers for X, Y, Z axes)");
-
-            ImGui::DragFloat2("Sprite UVTranslate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the translation (offset) of the sprite's UV coordinates");
-
-            ImGui::DragFloat2("Sprite UV Scale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the scale of the sprite's UV coordinates");
-
-            ImGui::SliderAngle("Sprite UVRotate", &uvTransformSprite.rotate.z);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Rotate the sprite's UV coordinates");
-
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            */
-
-            // --- Obj  ---
-            ImGui::Text("Obj");
-            ImGui::Separator();
-            ImGui::DragFloat3("Obj Position", &transform.translate.x, 0.1f);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the position of the Obj (X, Y, Z)");
-
-            ImGui::DragFloat3("Obj Rotation", &transform.rotate.x, 0.01f);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the rotation of the Obj (angles for X, Y, Z axes)");
-
-            ImGui::DragFloat3("Obj Scale", &transform.scale.x, 0.01f, 0.1f, 10.0f);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the scale of the Obj (multipliers for X, Y, Z axes)");
-
-            ImGui::ColorEdit3("Obj Color", &materialDataSprite->color.x);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the Obj's color (RGB)");
-
-            // 透明度
-            ImGui::SliderFloat("Obj Alpha", &materialDataSprite->color.w, 0.0f, 1.0f, "%.2f");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the Obj transparency (alpha)");
-
-            ImGui::Combo("Obj Texture", &sphereTextureIndex, "texture1\0texture2\0texture3\0");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Select the texture image for the Obj");
-
-            ImGui::Checkbox("Enable Lighting", &sphereEnableLighting);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Enable or disable lighting effects on the Obj");
-
-            const char* shadingTypes[] = { "Lambert", "HalfLambert" };
-            ImGui::Combo("Obj Shading", &sphereShadingType, shadingTypes, IM_ARRAYSIZE(shadingTypes));
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Select the shading method for the Obj");
-
-            // ぶれんどもーど
-            const char* blendModeNames[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
-            ImGui::Combo("Blend Mode", &blendMode, blendModeNames, IM_ARRAYSIZE(blendModeNames));
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the blend mode for the Obj");
+                // transforms配列の各要素のtranslateを操作
+                ImGui::DragFloat3(label.c_str(), &transforms[index].translate.x, 0.01f);
+            }
 
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
 
-            // --- Light ---
-            ImGui::Text("Light");
-            ImGui::Separator();
-            ImGui::DragFloat3("Light Direction", &directionalLightData->direction.x, 0.01f, -1.0f, 1.0f);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the direction of the light (X, Y, Z)");
+            //// --- Obj  ---
+            //ImGui::Text("Obj");
+            //ImGui::Separator();
+            //ImGui::DragFloat3("Obj Position", &transform.translate.x, 0.1f);
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the position of the Obj (X, Y, Z)");
 
-            // 明るさ
-            ImGui::SliderFloat("Light Intensity", &directionalLightData->intensity, 0.0f, 5.0f, "%.2f");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Change the intensity (brightness) of the light");
+            //ImGui::DragFloat3("Obj Rotation", &transform.rotate.x, 0.01f);
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the rotation of the Obj (angles for X, Y, Z axes)");
+
+            //ImGui::DragFloat3("Obj Scale", &transform.scale.x, 0.01f, 0.1f, 10.0f);
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the scale of the Obj (multipliers for X, Y, Z axes)");
+
+            //ImGui::ColorEdit3("Obj Color", &materialDataSprite->color.x);
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the Obj's color (RGB)");
+
+            //// 透明度
+            //ImGui::SliderFloat("Obj Alpha", &materialDataSprite->color.w, 0.0f, 1.0f, "%.2f");
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the Obj transparency (alpha)");
+
+            //ImGui::Combo("Obj Texture", &sphereTextureIndex, "texture1\0texture2\0texture3\0");
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Select the texture image for the Obj");
+
+            //ImGui::Checkbox("Enable Lighting", &sphereEnableLighting);
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Enable or disable lighting effects on the Obj");
+
+            //const char* shadingTypes[] = { "Lambert", "HalfLambert" };
+            //ImGui::Combo("Obj Shading", &sphereShadingType, shadingTypes, IM_ARRAYSIZE(shadingTypes));
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Select the shading method for the Obj");
+
+            //// ぶれんどもーど
+            //const char* blendModeNames[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
+            //ImGui::Combo("Blend Mode", &blendMode, blendModeNames, IM_ARRAYSIZE(blendModeNames));
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the blend mode for the Obj");
+
+            //ImGui::Spacing();
+            //ImGui::Separator();
+            //ImGui::Spacing();
+
+            //// --- Light ---
+            //ImGui::Text("Light");
+            //ImGui::Separator();
+            //ImGui::DragFloat3("Light Direction", &directionalLightData->direction.x, 0.01f, -1.0f, 1.0f);
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the direction of the light (X, Y, Z)");
+
+            //// 明るさ
+            //ImGui::SliderFloat("Light Intensity", &directionalLightData->intensity, 0.0f, 5.0f, "%.2f");
+            //if (ImGui::IsItemHovered())
+            //    ImGui::SetTooltip("Change the intensity (brightness) of the light");
 
             ImGui::End();
 
