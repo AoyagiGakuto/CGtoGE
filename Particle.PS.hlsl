@@ -13,6 +13,7 @@ struct MaterialData
     float4x4 uvTransform;
 };
 
+
 cbuffer Material : register(b0)
 {
     MaterialData gMaterial;
