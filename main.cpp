@@ -208,8 +208,14 @@ struct Material {
     Vector4 color;
     int enableLighting;
     int shadingType; // 0: Lambert, 1: HalfLambert
-    float padding[2];
+    float shininess;
+    float padding[1];
     Matrix4x4 uvTransform;
+};
+
+struct CameraForGPU {
+    Vector3 worldPosition;
+    float padding;
 };
 
 struct MaterialData {
@@ -771,7 +777,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     descriptorRangeForInstancing[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // SRVを使う
     descriptorRangeForInstancing[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    D3D12_ROOT_PARAMETER rootParameters[4] = {};
+    D3D12_ROOT_PARAMETER rootParameters[5] = {};
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     rootParameters[0].Descriptor.ShaderRegister = 0;
@@ -784,10 +790,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     rootParameters[2].DescriptorTable.pDescriptorRanges = descriptorRanges;
     rootParameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRanges);
     rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // PixelShaderで使う
     rootParameters[3].Descriptor.ShaderRegister = 1;
+    rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; // ConstantBufferView
+    rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; // PixelShaderで使う
+    rootParameters[4].Descriptor.ShaderRegister = 2; // register(b2)
 
-    // レジスタ番号1を使う
+    // ルートシグネチャの設定
     descriptionRootSignature.pParameters = rootParameters;
     descriptionRootSignature.NumParameters = _countof(rootParameters);
 
@@ -943,16 +952,69 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
     // modelDataを読み込む
     // ModelData modelData = LoadObjFile("Resources/fence", "fence.obj");
-    ModelData modelData;
-    modelData.vertices.push_back({ .position = { 1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左上
-    modelData.vertices.push_back({ .position = { -1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右上
-    modelData.vertices.push_back({ .position = { 1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左下
-    modelData.vertices.push_back({ .position = { 1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左下
-    modelData.vertices.push_back({ .position = { -1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右上
-    modelData.vertices.push_back({ .position = { -1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右下
+    //ModelData modelData;
+    //modelData.vertices.push_back({ .position = { 1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左上
+    //modelData.vertices.push_back({ .position = { -1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右上
+    //modelData.vertices.push_back({ .position = { 1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左下
+    //modelData.vertices.push_back({ .position = { 1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 左下
+    //modelData.vertices.push_back({ .position = { -1.0f, 1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 0.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右上
+    //modelData.vertices.push_back({ .position = { -1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 1.0f, 1.0f }, .normal = { 0.0f, 0.0f, 1.0f } }); // 右下
 
+    ModelData modelData;
+
+    // --- 球体データの自動生成 ---
+    const uint32_t kSubdivision = 16; // 分割数（増やせば滑らかになります）
+    const float kRadius = 1.0f; // 半径
+
+    // 定数定義 (円周率など)
+    const float kPi = std::numbers::pi_v<float>;
+    const float kTwoPi = kPi * 2.0f;
+
+    for (uint32_t lat = 0; lat < kSubdivision; ++lat) {
+        float lat0 = kPi * (-0.5f + float(lat) / kSubdivision);
+        float lat1 = kPi * (-0.5f + float(lat + 1) / kSubdivision);
+        for (uint32_t lon = 0; lon < kSubdivision; ++lon) {
+            float lon0 = kTwoPi * float(lon) / kSubdivision;
+            float lon1 = kTwoPi * float(lon + 1) / kSubdivision;
+
+            // 4点の座標 (Position)
+            Vector4 p00 = { kRadius * cos(lat0) * cos(lon0), kRadius * sin(lat0), kRadius * cos(lat0) * sin(lon0), 1.0f };
+            Vector4 p01 = { kRadius * cos(lat0) * cos(lon1), kRadius * sin(lat0), kRadius * cos(lat0) * sin(lon1), 1.0f };
+            Vector4 p10 = { kRadius * cos(lat1) * cos(lon0), kRadius * sin(lat1), kRadius * cos(lat1) * sin(lon0), 1.0f };
+            Vector4 p11 = { kRadius * cos(lat1) * cos(lon1), kRadius * sin(lat1), kRadius * cos(lat1) * sin(lon1), 1.0f };
+
+            // UV座標
+            Vector2 uv00 = { float(lon) / kSubdivision, 1.0f - float(lat) / kSubdivision };
+            Vector2 uv01 = { float(lon + 1) / kSubdivision, 1.0f - float(lat) / kSubdivision };
+            Vector2 uv10 = { float(lon) / kSubdivision, 1.0f - float(lat + 1) / kSubdivision };
+            Vector2 uv11 = { float(lon + 1) / kSubdivision, 1.0f - float(lat + 1) / kSubdivision };
+
+            // 法線 (Normal) - 原点からの方向を正規化
+            // ※簡易的に座標(p)をそのまま使って正規化します
+            auto Normalize = [](float x, float y, float z) -> Vector3 {
+                float l = sqrt(x * x + y * y + z * z);
+                return { x / l, y / l, z / l };
+            };
+            Vector3 n00 = Normalize(p00.x, p00.y, p00.z);
+            Vector3 n01 = Normalize(p01.x, p01.y, p01.z);
+            Vector3 n10 = Normalize(p10.x, p10.y, p10.z);
+            Vector3 n11 = Normalize(p11.x, p11.y, p11.z);
+
+            // 2つの三角形 (00 -> 10 -> 11) と (00 -> 11 -> 01) として登録
+            modelData.vertices.push_back({ p00, uv00, n00 });
+            modelData.vertices.push_back({ p10, uv10, n10 });
+            modelData.vertices.push_back({ p11, uv11, n11 });
+
+            modelData.vertices.push_back({ p00, uv00, n00 });
+            modelData.vertices.push_back({ p11, uv11, n11 });
+            modelData.vertices.push_back({ p01, uv01, n01 });
+        }
+    }
+
+
+    // onnajinotukutteru!
     // --- 頂点バッファ生成前に定義 ---
-    const uint32_t kSubdivision = 32; // 分割数（大きいほど滑らか）
+    //const uint32_t kSubdivision = 32; // 分割数（大きいほど滑らか）
     const uint32_t kSphereVertexCount = kSubdivision * kSubdivision * 6;
 
     // 頂点バッファ用リソースを作成
@@ -965,22 +1027,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
     // 頂点コピー
     memcpy(vertexData, modelData.vertices.data(), sizeof(VertexData) * modelData.vertices.size());
-    // 面法線を付与（3頂点ごと）
-    for (size_t i = 0; i + 2 < modelData.vertices.size(); i += 3) {
-        const Vector4& p0 = vertexData[i + 0].position;
-        const Vector4& p1 = vertexData[i + 1].position;
-        const Vector4& p2 = vertexData[i + 2].position;
-        Vector3 e1 { p1.x - p0.x, p1.y - p0.y, p1.z - p0.z };
-        Vector3 e2 { p2.x - p0.x, p2.y - p0.y, p2.z - p0.z };
-        Vector3 n = Cross(e1, e2);
-        float len = sqrtf(n.x * n.x + n.y * n.y + n.z * n.z);
-        if (len > 1e-6f) {
-            n.x /= len;
-            n.y /= len;
-            n.z /= len;
-        }
-        vertexData[i + 0].normal = vertexData[i + 1].normal = vertexData[i + 2].normal = n;
-    }
+    
+    //// 面法線を付与（3頂点ごと）
+    //for (size_t i = 0; i + 2 < modelData.vertices.size(); i += 3) {
+    //    const Vector4& p0 = vertexData[i + 0].position;
+    //    const Vector4& p1 = vertexData[i + 1].position;
+    //    const Vector4& p2 = vertexData[i + 2].position;
+    //    Vector3 e1 { p1.x - p0.x, p1.y - p0.y, p1.z - p0.z };
+    //    Vector3 e2 { p2.x - p0.x, p2.y - p0.y, p2.z - p0.z };
+    //    Vector3 n = Cross(e1, e2);
+    //    float len = sqrtf(n.x * n.x + n.y * n.y + n.z * n.z);
+    //    if (len > 1e-6f) {
+    //        n.x /= len;
+    //        n.y /= len;
+    //        n.z /= len;
+    //    }
+    //    vertexData[i + 0].normal = vertexData[i + 1].normal = vertexData[i + 2].normal = n;
+    //}
 
     vertexResource->Unmap(0, nullptr);
 
@@ -1037,7 +1100,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     directionalLightData->direction = { 0.0f, -1.0f, 0.0f };
     directionalLightData->intensity = 1.0f;
 
-    const uint32_t kNumInstance = 10; // いたポリ枚数
+    const uint32_t kNumInstance = 1; // いたポリ枚数
     // Instancing用のTransformationMatrixリソースを作る
     Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource = CreateBufferResouse(device.Get(), sizeof(TransformationMatrix) * kNumInstance);
     // 書き込むためのアドレスを取得
@@ -1307,6 +1370,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     // 透明度
     materialDataSprite->color.w = 1.0f;
 
+    // カメラ用定数バッファリソースの作成
+    ComPtr<ID3D12Resource> cameraResource = CreateBufferResouse(device.Get(), sizeof(CameraForGPU));
+    CameraForGPU* cameraData = nullptr;
+    cameraResource->Map(0, nullptr, reinterpret_cast<void**>(&cameraData));
+
+    // マテリアルの初期値設定 (光沢度を設定)
+    materialDataSprite->shininess = 50.0f;
+
     // --------------------------------------------------
     // メインループ
     // --------------------------------------------------
@@ -1349,6 +1420,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
             // TransitionBarrierを張る
             commandList->ResourceBarrier(1, &barrier);
+
+            cameraData->worldPosition = cameraTransform.translate;
 
             // コントローラー
             XINPUT_STATE state;
@@ -1442,6 +1515,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
+
+            if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::ColorEdit4("Color", &materialDataSprite->color.x);
+
+                // ライティング有効/無効
+                ImGui::Checkbox("Enable Lighting", &sphereEnableLighting);
+
+                // シェーディングタイプ (0: Lambert, 1: HalfLambert)
+                const char* shadingTypes[] = { "Lambert", "Half Lambert" };
+                ImGui::Combo("Shading Type", &sphereShadingType, shadingTypes, IM_ARRAYSIZE(shadingTypes));
+
+                // 光沢度 (Shininess)
+                ImGui::DragFloat("Shininess", &materialDataSprite->shininess, 1.0f, 1.0f, 100.0f);
+            }
+
+            if (ImGui::CollapsingHeader("Directional Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+                // ライトの向き
+                ImGui::DragFloat3("Direction", &directionalLightData->direction.x, 0.01f, -1.0f, 1.0f);
+
+                // ライトの色
+                ImGui::ColorEdit4("Light Color", &directionalLightData->color.x);
+
+                // ライトの強さ
+                ImGui::DragFloat("Intensity", &directionalLightData->intensity, 0.01f, 0.0f, 10.0f);
+            }
 
             //// --- Obj  ---
             //ImGui::Text("Obj");
@@ -1624,15 +1722,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             commandList->RSSetViewports(1, &viewport);
             commandList->RSSetScissorRects(1, &scissorRect);
             commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-            commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+            //commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+            commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
             commandList->SetGraphicsRootConstantBufferView(0, materialResourceSprite->GetGPUVirtualAddress());
             // commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
             commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
+            commandList->SetGraphicsRootConstantBufferView(3, directionalLightResource->GetGPUVirtualAddress());
+            commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
 
             // テクスチャの設定
             commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandlesGPU[sphereTextureIndex]);
 
-            commandList->DrawInstanced(6, kNumInstance, 0, 0);
+            //commandList->DrawInstanced(6, kNumInstance, 0, 0);
+            commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
 
             ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 

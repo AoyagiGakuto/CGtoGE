@@ -7,6 +7,7 @@ struct Material
 {
     float4 color;
     int enableLighting;
+    float shininess;
     int shadingType; // 0: Lambert, 1: HalfLambert
     float2 padding;
     float4x4 uvTransform;
@@ -23,9 +24,24 @@ struct DirectionalLight
 
 ConstantBuffer<DirectionalLight> gDirectionalLight : register(b1);
 
+struct Camera
+{
+    float3 worldPosition;
+};
+
+ConstantBuffer<Camera> gCamera : register(b2);
+
 struct PixelShaderOutput
 {
     float4 color : SV_TARGET0;
+};
+
+struct VertexShaderOutput
+{
+    float4 position : SV_POSITION;
+    float2 texcoord : TEXCOORD0;
+    float3 normal : NORMAL0;
+    float3 worldPosition : POSITION0; // VSに合わせて追加
 };
 
 PixelShaderOutput main(VertexShaderOutput input)
@@ -34,51 +50,52 @@ PixelShaderOutput main(VertexShaderOutput input)
     float4 transformedUV = mul(float4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
 
-    float4 baseColor = gMaterial.color * textureColor;
-
+    // ライティング計算
     if (gMaterial.enableLighting != 0)
     {
-        float NdotL = dot(normalize(input.normal), -gDirectionalLight.direction);
+        float3 N = normalize(input.normal);
+        float3 L = normalize(-gDirectionalLight.direction); // ライトへの方向
+        float NdotL = dot(N, L);
+        float lighting = max(NdotL, 0.0f); // Lambert
 
-        float lighting = 1.0f;
-        if (gMaterial.shadingType == 0)
-        { // Lambert
-            lighting = max(NdotL, 0.0f);
-        }
-        else
-        { // HalfLambert
+        if (gMaterial.shadingType == 1) // HalfLambertの場合
+        {
             lighting = NdotL * 0.5f + 0.5f;
         }
 
-        // 前のコード
-        //output.color = baseColor * gDirectionalLight.color * lighting * gDirectionalLight.intensity;
+        // --- 鏡面反射 の計算 ---
+        // 視線ベクトル (カメラ位置 - ピクセル位置)
+        float3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
+
+        // 反射ベクトル
+        float3 reflectLight = reflect(gDirectionalLight.direction, N);
+
+        // 鏡面反射の強さを計算
+        float RdotE = dot(reflectLight, toEye);
         
-        output.color = gMaterial.color * textureColor * gDirectionalLight.color * lighting * gDirectionalLight.intensity;
-        output.color.rgb = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb  * gDirectionalLight.intensity;
+        // ハイライト
+        float specularPow = pow(saturate(RdotE), gMaterial.shininess);
+
+        // 拡散反射色
+        float3 diffuse = gMaterial.color.rgb * textureColor.rgb * gDirectionalLight.color.rgb * lighting * gDirectionalLight.intensity;
+
+        // 鏡面反射色
+        float3 specular = gDirectionalLight.color.rgb * gDirectionalLight.intensity * specularPow * float3(1.0f, 1.0f, 1.0f);
+
+        // 最終合成: 拡散反射 + 鏡面反射
+        output.color.rgb = diffuse + specular;
         output.color.a = gMaterial.color.a * textureColor.a;
     }
     else
     {
-        output.color = baseColor;
+        output.color = gMaterial.color * textureColor;
     }
-    
-    // output.colorのα値が0のときピクセルを棄却
+
+    // アルファテスト等は既存のまま
     if (output.color.a == 0.0f)
-    {
         discard;
-    }
-    
-    // textureColorのα値が0のときピクセルを棄却
     if (textureColor.a == 0.0f)
-    {
         discard;
-    }
-    
-    // textureColorのα値が0.5以下のときピクセルを棄却
-    if (textureColor.a <= 0.5f)
-    {
-        discard;
-    }
-    
+
     return output;
 }
