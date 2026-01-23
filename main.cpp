@@ -963,7 +963,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     ModelData modelData;
 
     // --- 球体データの自動生成 ---
-    const uint32_t kSubdivision = 16; // 分割数（増やせば滑らかになります）
+    const uint32_t kSubdivision = 16; // 分割数
     const float kRadius = 1.0f; // 半径
 
     // 定数定義 (円周率など)
@@ -990,7 +990,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
             Vector2 uv11 = { float(lon + 1) / kSubdivision, 1.0f - float(lat + 1) / kSubdivision };
 
             // 法線 (Normal) - 原点からの方向を正規化
-            // ※簡易的に座標(p)をそのまま使って正規化します
             auto Normalize = [](float x, float y, float z) -> Vector3 {
                 float l = sqrt(x * x + y * y + z * z);
                 return { x / l, y / l, z / l };
